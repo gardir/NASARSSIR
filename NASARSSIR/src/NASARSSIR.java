@@ -29,15 +29,19 @@ public class NASARSSIR {
             SyndFeed feed = input.build(new XmlReader(feedUrl));
 
             List entries = feed.getEntries();
+            int i = 0;
             for ( Object listItem : entries ) {
                 if ( listItem instanceof SyndEntryImpl ) {
                     if ( !checkEntry( (SyndEntryImpl) listItem, args[0] ) ) {
                         System.out.println("Image already saved. Aborting...");
+                        if ( i > 0 ) {
+                            System.out.format("Saved %d images to '%s'\n", i, args[0]);
+                        }
                         System.exit(0);
                     }
                 }
+                i++;
             }
-
         }
         catch (Exception ex) {
             ex.printStackTrace();
@@ -53,18 +57,25 @@ public class NASARSSIR {
      * @throws IOException
      */
     private static boolean checkEntry(SyndEntryImpl entry, String path) throws IOException {
-        for ( Object listItem : entry.getEnclosures()) {
-            if ( listItem instanceof SyndEnclosureImpl ) {
-                SyndEnclosureImpl enclosure = (SyndEnclosureImpl) listItem;
-                String url = enclosure.getUrl().replace("http://", "https://");
-                String filename = url.substring(url.lastIndexOf("/") + 1);
-                if ( isNasaImage(enclosure.getUrl()) ) {
-                    if ( !saveImageTo(url, path, filename) ) {
-                        return false;
-                    }
-                    System.out.format("Saved '%s' to '%s'\n", filename, path);
-                }
+        String url = ((SyndEnclosureImpl) entry.getEnclosures().get(0)).getUrl().replace("http://", "https://");
+        String description = entry.getUri();
+        String filename = description.substring(description.lastIndexOf("/") + 1);
+        String originalFilename = url.substring(url.lastIndexOf("/") + 1);
+        if ( isNasaImage(url) ) {
+
+            String filepath = String.format("%s%s", path.charAt(path.length()-1) == '/' ? path : path + "/", originalFilename);
+            File outFile = new File(filepath);
+            if ( outFile.exists() ) {
+                String newFilePath = String.format("%s%s", path.charAt(path.length()-1) == '/' ? path : path + "/", filename);
+                File newOutFile = new File(newFilePath);
+                if ( !outFile.renameTo(newOutFile) )
+                    return false;
+                System.out.format("Renamed '%s' to '%s'\n", originalFilename, filename);
+                return true;
+            } else if ( saveImageTo(url, path, filename) ) {
+                return false;
             }
+            System.out.format("Saved '%s'\n", filename);
         }
         return true;
     }
@@ -75,7 +86,7 @@ public class NASARSSIR {
      * @return boolean value representing if it is an image from given source
      */
     private static boolean isNasaImage(String url) {
-        return url.startsWith("http://www.nasa.gov/sites/default/files/thumbnails/image/") &&
+        return url.startsWith("https://www.nasa.gov/sites/default/files/thumbnails/image/") &&
                 (url.endsWith(".jpg") || url.endsWith(".jpeg") || url.endsWith("png") );
     }
 
@@ -89,14 +100,15 @@ public class NASARSSIR {
      */
     private static boolean saveImageTo(String url, String absolutePath, String filename) throws IOException {
         // Creates path as 'absolutePath/filename' by checking if absolutePath included char '/' at the end.
-        String path = String.format("%s%s", absolutePath.charAt(absolutePath.length()-1) == '/' ? absolutePath : absolutePath + "/", filename);
+        String path = String.format("%s%s", absolutePath.charAt(absolutePath.length()-1) == '\\' ? absolutePath : absolutePath + "\\", filename);
         File outFile = new File(path);
         if ( outFile.exists() ) {
             return false;
         }
         URL website = new URL(url);
         BufferedImage img = ImageIO.read(website);
-        return ImageIO.write(img, "jpg", outFile);
+        String formatName = url.substring(url.lastIndexOf("."));
+        return ImageIO.write(img, formatName, outFile);
     }
 
 }
