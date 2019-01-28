@@ -66,7 +66,9 @@ public class NASARSSIR {
             String filepath = String.format("%s%s", path.charAt(path.length()-1) == '/' ? path : path + "/", originalFilename);
             File outFile = new File(filepath);
             if ( outFile.exists() ) {
-                String newFilePath = String.format("%s%s", path.charAt(path.length()-1) == '/' ? path : path + "/", filename);
+                String newFilePath = String.format("%s%s%s", path.charAt(path.length()-1) == '/' ? path : path + "/",
+                        filename,
+                        originalFilename.substring(originalFilename.lastIndexOf(".")));
                 File newOutFile = new File(newFilePath);
                 if ( !outFile.renameTo(newOutFile) )
                     return false;
